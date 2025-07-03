@@ -1,8 +1,8 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const OURA_API_BASE_URL = 'https://api.ouraring.com/v2/usercollection';
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -27,4 +27,4 @@ export default async function handler(req, res) {
       error: `Oura API request failed: ${error.response?.data?.detail || error.message}` 
     });
   }
-}
+};
