@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "vercel dev",
-    "build": "echo 'No build step required'",
+    "build": "mkdir -p public && cp index.html public/",
     "deploy": "vercel --prod"
   },
   "author": "",
