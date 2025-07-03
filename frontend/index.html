@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oura Ring 健康管理アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .auth-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1rem;
+            color: #666;
+        }
+        
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #ffeaea;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-tab {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1>🩺 Oura Ring 健康管理</h1>
+            <p>あなたの健康データを可視化・分析します</p>
+        </div>
+        
+        <div class="auth-section" id="authSection">
+            <h2>🔐 認証</h2>
+            <p>Oura Ring のPersonal Access Tokenを入力してください</p>
+            <input type="password" id="tokenInput" class="input-field" placeholder="Personal Access Token">
+            <button class="button" onclick="authenticate()">認証</button>
+            <div id="authError" class="error" style="display: none;"></div>
+        </div>
+        
+        <div class="dashboard" id="dashboard">
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('overview')">概要</button>
+                <button class="nav-tab" onclick="showTab('sleep')">睡眠</button>
+                <button class="nav-tab" onclick="showTab('activity')">活動</button>
+                <button class="nav-tab" onclick="showTab('heartrate')">心拍数</button>
+            </div>
+            
+            <div id="overviewTab" class="tab-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>💤 昨夜の睡眠</h3>
+                        <div class="stat-value" id="sleepScore">-</div>
+                        <div>スコア</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🏃 今日の活動</h3>
+                        <div class="stat-value" id="activityScore">-</div>
+                        <div>スコア</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💓 平均心拍数</h3>
+                        <div class="stat-value" id="avgHeartRate">-</div>
+                        <div>BPM</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🔋 体調</h3>
+                        <div class="stat-value" id="readinessScore">-</div>
+                        <div>スコア</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="sleepTab" class="tab-content" style="display: none;">
+                <div class="chart-container">
+                    <h3>睡眠データ</h3>
+                    <canvas id="sleepChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>睡眠詳細</h3>
+                    <table class="data-table" id="sleepTable">
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>スコア</th>
+                                <th>総睡眠時間</th>
+                                <th>深い睡眠</th>
+                                <th>REM睡眠</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="activityTab" class="tab-content" style="display: none;">
+                <div class="chart-container">
+                    <h3>活動データ</h3>
+                    <canvas id="activityChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>活動詳細</h3>
+                    <table class="data-table" id="activityTable">
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>スコア</th>
+                                <th>歩数</th>
+                                <th>消費カロリー</th>
+                                <th>活動時間</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="heartrateTab" class="tab-content" style="display: none;">
+                <div class="chart-container">
+                    <h3>心拍数データ</h3>
+                    <canvas id="heartrateChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading" style="display: none;">
+            データを読み込んでいます...
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let accessToken = '';
+        let sleepChart, activityChart, heartrateChart;
+        
+        async function authenticate() {
+            const token = document.getElementById('tokenInput').value;
+            if (!token) {
+                showError('authError', 'トークンを入力してください');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                const response = await fetch('/api/oura/personal-info', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('認証に失敗しました');
+                }
+                
+                accessToken = token;
+                document.getElementById('authSection').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+                await loadDashboardData();
+            } catch (error) {
+                showError('authError', error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function loadDashboardData() {
+            try {
+                showLoading(true);
+                
+                const [sleepData, activityData] = await Promise.all([
+                    fetchOuraData('/api/oura/sleep'),
+                    fetchOuraData('/api/oura/activity')
+                ]);
+                
+                updateOverview(sleepData, activityData);
+                updateSleepTab(sleepData);
+                updateActivityTab(activityData);
+                
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function fetchOuraData(endpoint) {
+            const response = await fetch(endpoint, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`);
+            }
+            
+            return response.json();
+        }
+        
+        function updateOverview(sleepData, activityData) {
+            if (sleepData.data && sleepData.data.length > 0) {
+                const latestSleep = sleepData.data[0];
+                document.getElementById('sleepScore').textContent = latestSleep.score || '-';
+            }
+            
+            if (activityData.data && activityData.data.length > 0) {
+                const latestActivity = activityData.data[0];
+                document.getElementById('activityScore').textContent = latestActivity.score || '-';
+            }
+        }
+        
+        function updateSleepTab(sleepData) {
+            if (!sleepData.data || sleepData.data.length === 0) return;
+            
+            const ctx = document.getElementById('sleepChart').getContext('2d');
+            const labels = sleepData.data.slice(0, 7).map(item => item.day).reverse();
+            const scores = sleepData.data.slice(0, 7).map(item => item.score).reverse();
+            
+            if (sleepChart) {
+                sleepChart.destroy();
+            }
+            
+            sleepChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '睡眠スコア',
+                        data: scores,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '直近7日間の睡眠スコア'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            const tbody = document.querySelector('#sleepTable tbody');
+            tbody.innerHTML = '';
+            sleepData.data.slice(0, 7).forEach(item => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = item.day;
+                row.insertCell(1).textContent = item.score || '-';
+                row.insertCell(2).textContent = item.total_sleep_duration ? `${Math.round(item.total_sleep_duration / 3600)}h ${Math.round((item.total_sleep_duration % 3600) / 60)}m` : '-';
+                row.insertCell(3).textContent = item.deep_sleep_duration ? `${Math.round(item.deep_sleep_duration / 60)}m` : '-';
+                row.insertCell(4).textContent = item.rem_sleep_duration ? `${Math.round(item.rem_sleep_duration / 60)}m` : '-';
+            });
+        }
+        
+        function updateActivityTab(activityData) {
+            if (!activityData.data || activityData.data.length === 0) return;
+            
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const labels = activityData.data.slice(0, 7).map(item => item.day).reverse();
+            const scores = activityData.data.slice(0, 7).map(item => item.score).reverse();
+            
+            if (activityChart) {
+                activityChart.destroy();
+            }
+            
+            activityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '活動スコア',
+                        data: scores,
+                        backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                        borderColor: '#764ba2',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '直近7日間の活動スコア'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            const tbody = document.querySelector('#activityTable tbody');
+            tbody.innerHTML = '';
+            activityData.data.slice(0, 7).forEach(item => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = item.day;
+                row.insertCell(1).textContent = item.score || '-';
+                row.insertCell(2).textContent = item.steps || '-';
+                row.insertCell(3).textContent = item.active_calories || '-';
+                row.insertCell(4).textContent = item.active_time ? `${Math.round(item.active_time / 60)}m` : '-';
+            });
+        }
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            event.target.classList.add('active');
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
