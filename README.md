@@ -1,6 +1,8 @@
-# Oura Ring 健康管理アプリ
+# 🩺 Oura Health Dashboard
 
-Oura Ring APIを使用した健康データの可視化・分析アプリケーションです。
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=flat&logo=vercel&logoColor=white)](https://oura-health-app-3isg.vercel.app/)
+
+Oura Ring APIを使用した健康データの可視化・分析ダッシュボードです。リアルタイムで睡眠、活動、心拍数データを美しく表示します。
 
 ## 機能
 
